@@ -12,6 +12,4 @@ venv/
 .vscode/
 .venv
 .idea/
-the-deploy-ec2-script.sh
-
 data_files
