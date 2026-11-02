@@ -76,10 +76,9 @@ async def internal_api_key_guard(request, call_next):
 
 
 origins = [
-    "https://open-energy-fe.vercel.app",
-    "http://localhost:3000",
-    "https://open-energy-be-vo4yi.ondigitalocean.app",
-    "https://localhost:8000",
+    origin.strip()
+    for origin in os.getenv("CORS_ORIGINS", "").split(",")
+    if origin.strip()
 ]
 
 app.add_middleware(

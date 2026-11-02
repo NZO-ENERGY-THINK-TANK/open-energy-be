@@ -18,10 +18,6 @@
 name: Build & Deploy
 
 on:
-  push:
-    branches:
-      - main
-      - master
   workflow_dispatch:  # Allows manual trigger from GitHub Actions UI
 
 env:
@@ -31,7 +27,7 @@ jobs:
   build-and-deploy:
     name: Build, Push & Deploy
     runs-on: ubuntu-latest
-    
+
     steps:
       # -----------------------------------------------------------------------
       # Checkout & Setup
@@ -46,20 +42,20 @@ jobs:
         run: |
           # Get the short commit SHA
           SHORT_SHA=$(git rev-parse --short HEAD)
-          
+
           # Get the current date
           DATE=$(date +'%Y%m%d')
-          
+
           # Count commits for incremental build number
           BUILD_NUMBER=$(git rev-list --count HEAD)
-          
+
           # Generate version: v{build_number}-{date}-{sha}
           VERSION="v${BUILD_NUMBER}-${DATE}-${SHORT_SHA}"
-          
+
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
           echo "build_number=${BUILD_NUMBER}" >> $GITHUB_OUTPUT
-          
+
           echo "=========================================="
           echo "Generated Version: ${VERSION}"
           echo "Build Number: ${BUILD_NUMBER}"
@@ -93,7 +89,7 @@ jobs:
       - name: Build Docker image
         run: |
           echo "Building image: ${{ steps.ecr.outputs.url }}:${{ steps.version.outputs.version }}"
-          
+
           docker build \
             --build-arg BUILD_VERSION=${{ steps.version.outputs.version }} \
             --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
@@ -106,16 +102,16 @@ jobs:
       - name: Push Docker image to ECR
         run: |
           echo "Pushing images to ECR..."
-          
+
           # Push versioned tag
           docker push ${{ steps.ecr.outputs.url }}:${{ steps.version.outputs.version }}
-          
+
           # Push latest tag
           docker push ${{ steps.ecr.outputs.url }}:latest
-          
+
           # Push build number tag
           docker push ${{ steps.ecr.outputs.url }}:build-${{ steps.version.outputs.build_number }}
-          
+
           echo "=========================================="
           echo "Pushed tags:"
           echo "  - ${{ steps.version.outputs.version }}"
@@ -131,7 +127,7 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          
+
           # Add EC2 host to known_hosts to avoid prompt
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
 
@@ -139,18 +135,18 @@ jobs:
         run: |
           echo "Deploying to EC2: ${{ secrets.EC2_HOST }}"
           echo "Image tag: ${{ steps.version.outputs.version }}"
-          
+
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             ${{ secrets.EC2_SSH_USER }}@${{ secrets.EC2_HOST }} << 'DEPLOY_SCRIPT'
-          
+
           echo "=========================================="
           echo "Starting deployment on EC2"
           echo "Timestamp: $(date)"
           echo "=========================================="
-          
+
           # Run deploy script with the new image tag
           sudo OVERRIDE_IMAGE_TAG="${{ steps.version.outputs.version }}" /usr/local/bin/deploy.sh
-          
+
           echo "=========================================="
           echo "Deployment completed!"
           echo "=========================================="
